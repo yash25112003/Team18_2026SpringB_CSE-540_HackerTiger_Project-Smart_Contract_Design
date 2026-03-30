@@ -1,0 +1,20 @@
+{
+  "name": "eng-blockchain-26-hacktiger",
+  "version": "1.0.0",
+  "description": "HackerTiger smart contract design",
+  "type": "module",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy": "hardhat run scripts/deploy.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yash25112003/eng-blockchain-26-hackTiger.git"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^7.0.0",
+    "hardhat": "^3.2.0"
+  }
+}
