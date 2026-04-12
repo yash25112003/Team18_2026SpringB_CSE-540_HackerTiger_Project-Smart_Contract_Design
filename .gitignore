@@ -212,4 +212,3 @@ cache/
 # Large local archives / nested repo metadata (do not push to GitHub)
 Hack.zip
 Hack/.git/
-Hack/.git_vendor_backup/
