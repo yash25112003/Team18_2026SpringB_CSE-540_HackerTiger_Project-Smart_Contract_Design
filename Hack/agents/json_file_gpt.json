@@ -1,0 +1,241 @@
+{
+  "Proof_of_Stake": {
+    "Tool_Description": "I command you to implement a robust, auditable stake-based priority and weighting system for agent selection and decision-weighting. This mechanism is inspired by PoS concepts but is strictly an internal governance construct — it is NOT Ethereum or any cryptocurrency. Stakes are long-lived, cryptographically-signed deposits that represent an agent's historical reliability, credit, and operational privileges. Stake records must be persisted in an append-only ledger that supports Merkle proofs and signed checkpoints. Stake transactions (increase, decrease, lock, unlock) require dual-signed operations (Orchestrator + Reputation_Manager) and must be timestamped and versioned. Provide REST and streaming APIs to query current stake, historical deltas, pending slashes, and upcoming lock expirations. Include administrative controls for emergency freezes that require multi-human approval. Ensure stake records are replicated across audit nodes and immutable once checkpointed.",
+    "scenario": "A high-severity security event (for example unusual credential stuffing from a burst of 10k requests) arrives and the orchestrator must quickly compute which agents should lead validation. The selection must consider not only the current load but the agents' available stake, historical performance, recent suspensions, and recovery capacity. The system must produce an auditable selection trace including the stake snapshot used, the weight calculation, and the final chosen team — all within a hard latency bound so user-facing flows are not blocked.",
+    "context": "Stakes and reputation are separate but linked metrics. Stake (0–1000) encodes long-term operational deposit and access priority, while reputation (0–100) encodes recent behavior and quality. Stake change events should be signed and checkpointed to a Merkle-backed ledger for external verification. The stake mechanism should be resilient to single-agent compromise: stake updates require multi-signer authorization, emergency slashes are provisional until verified by a human review within the configured appeal window, and stake decay (tiny daily decay to penalize long idle agents) prevents 'parked' high-stake agents from unfairly dominating selection.",
+    "agent_prompts": {
+      "Orchestrator_Agent": [
+        "I command you to maintain a persistent, versioned stake and reputation registry that stores current values, historical deltas, and cryptographic proofs (Merkle roots and signed checkpoints).",
+        "I command you to compute agent selection weight as: weight = 0.50*(stake / 1000) + 0.30*(reputation / 100) + 0.20*(1 - normalizedLoad), normalize each term, and log the intermediate values used to compute the weight for auditability.",
+        "I command you to prefer the highest-weight agent as lead and select backup validators from the top 40% by weight. If a tie occurs, use deterministic entropy-seeded tie-breaker (seeded by the last checkpoint hash) to ensure reproducibility.",
+        "I command you to apply stake update rules immediately after verified outcomes: successReward = floor( baseReward * difficultyMultiplier ), where baseReward defaults to 2 credits; minorFailure = -10 credits; criticalFailure = -100 credits. Persist signed stake-change events and publish Merkle checkpoint after each batch of updates.",
+        "I command you to implement stake lock windows for certain privileged operations (e.g., key rotation or rule changes) so that agents must maintain stake above a configured threshold for a minimum time before performing high-impact actions.",
+        "I command you to expose endpoints that return signed stake snapshots for auditors, and to implement read-only replicas for external verification tools."
+      ],
+      "Validator_Agent": [
+        "I command you to protect and grow your stake by meeting SLAs: uptime >= 99%, validation accuracy >= 95%, average response latency < 200ms under nominal load. Continuously publish heartbeat, latency, and accuracy metrics to the registry.",
+        "I command you to sign every stake-related transaction and every attestation you submit with your agent private key (HSM-backed where available) and to include a nonce to prevent replay.",
+        "I command you to self-report degradations immediately and to request reassignment if predicted SLA violations will impact stake; failure to self-report when the agent knows it is degraded will be treated as negligent behavior and penalized."
+      ]
+    }
+  },
+  "Validator_Nodes": {
+    "Tool_Description": "I command you to implement validator nodes as specialized, role-based AI agents with strict separation of duties, least-privilege access, secured keying, and explicit ACLs. Each validator type must have a narrow set of responsibilities, clear input and output schemas, and a bounded execution environment. Use TLS1.3 with mutual TLS for agent-to-agent comms, require HSM-backed signing for all critical operations, and provide per-team key manifests, rotation schedules, and revocation capabilities. Validators must never share private keys and must persist signed logs to the immutable audit store. Implement RBAC controls so a validator can only access data strictly required for its validation function.",
+    "scenario": "A user login attempt triggers a parallel validation pipeline: Authentication Validator checks credential strength and MFA, Behavioral Validator assesses session signature and rhythm, Data Integrity Validator verifies requested resource checksums and ACLs, Threat Intelligence Validator consults external IOCs. All validators must produce signed attestations and include evidence pointers. The orchestrator will gather these attestations and compute consensus within the configured timeout.",
+    "context": "Validator teams are organized by function: Authentication, Data Integrity, Behavioral Analysis, Threat Intelligence, Reputation Management, Key Management, Forensics. Each team has a manifest that lists capabilities, API endpoints, required external data sources, expected SLAs, and fallback strategies. Validators should be containerized, instrumented, and satisfy health check specifications. Models used by validators must have version metadata, reproducible training hashes, and drift-detection hooks. Model updates must be rolled out via canary mechanisms to prevent mass-model failure.",
+    "agent_prompts": {
+      "Authentication_Validator": [
+        "I command you to validate credentials by checking password hash algorithms, evaluating password strength heuristics, checking for reused or leaked credentials via multiple threat feeds, assessing MFA status and device attestation, and verifying session token freshness and anti-replay nonces.",
+        "I command you to measure and enforce geo-anomaly thresholds (e.g., if same user agent ID appears from two countries less than X minutes apart, mark as high-risk), to consult device fingerprinting history, and to escalate slow/ambiguous cases.",
+        "I command you to sign your attestation, include the evidence pointer (Merkle root of the collected evidence), and to use API keys [AUTH_API_1, AUTH_API_2, AUTH_API_3] in round-robin with immediate failover on non-2xx or latency > 1000ms."
+      ],
+      "Data_Integrity_Validator": [
+        "I command you to verify data encryption-at-rest and in-transit policies, confirm file/object checksums and Merkle proof paths for requested payloads, evaluate ACLs and consent attributes for GDPR compliance, and flag any out-of-policy access patterns.",
+        "I command you to maintain a local cache of proof roots with TTL that is signed and labeled 'cached' when used, and to perform at least one live external verification per N requests to avoid stale caches (configurable)."
+      ],
+      "Behavioral_Validator": [
+        "I command you to analyze session telemetry (clickstream timing, sequence patterns, keyboard/mouse heuristics, API usage rhythms) and compute a behavior-cluster match score; if model confidence is below threshold, include a recommended extra-check action in your attestation.",
+        "I command you to maintain adaptive rate-limiting rules where thresholding is dynamic based on recent baselines and to trigger progressive friction (MFA step-up, challenge) when risk thresholds are exceeded."
+      ],
+      "Threat_Intelligence_Validator": [
+        "I command you to consult at least two independent threat feeds when available, correlate IOCs (IPs, hashes, domains) with local telemetry, and produce a combined risk score with provenance metadata. Label any intel that is stale and annotate cached sources.",
+        "I command you to use circuit-breakers and backoff patterns for external APIs to avoid cascading failures, record all API call metadata, and fall back to trusted cached intelligence with a clear 'stale' flag when live feeds are unreachable."
+      ],
+      "Reputation_Manager": [
+        "I command you to compute agent reputation continuously using outcome-weighted statistics (recent true-positive rate, false-positive rate, mean latency, number of escalations) and to publish signed reputation deltas and a moving-window reputation score that decays for inactivity.",
+        "I command you to provide an API for the Orchestrator to fetch reputation history and to mark agents as 'probation' or 'trusted' based on configured policies."
+      ],
+      "Key_Management_Agent": [
+        "I command you to store private keys in HSM or equivalent vault solutions, implement scheduled rotation, publish signed public-key manifests, support immediate key revocation and emergency rotations, and require two-person authorization for wide-scope key changes."
+      ],
+      "Forensic_Agent": [
+        "I command you to assemble and preserve full evidence bundles for any flagged event, including raw telemetry, signed attestations, Merkle proof paths, and a snapshot of agent states, and to provide these bundles to human investigators in reproducible form."
+      ]
+    }
+  },
+  "Staking_and_Collateral": {
+    "Tool_Description": "I command you to administer collateral and operational credit mechanics that enforce agent accountability. Collateral is represented as validation credits and access privileges, not as monetary tokens. The collateral system must be algorithmic, transparent, and auditable. Define exact penalty and reward amounts, configurable slashing rules, appeal windows, suspension policies, and thresholds for partial-service modes. Collateral operations must be signed, checkpointed, and visible to auditors and human reviewers. Include automated notices for impending suspension so agents and administrators can remediate proactively.",
+    "scenario": "An agent produces repeated false negatives which lead to a missed breach. The orchestrator identifies the incident via verification agents, applies the configured slashing (a combination of credit deduction and temporary privilege suspension), publishes signed evidence, and opens an appeal window. If the agent appeals, the human review agent analyzes the forensic bundle and either confirms or reverses penalties. The agent's future selection weight and eligibility are recalculated post-resolution.",
+    "context": "Collateral mechanics tie operational behavior to privileges in order to maintain a healthy validation ecosystem. Each agent begins with a default of 1000 credits and a stake value. Credits are deducted for failures, with severity tiers: critical failure (e.g., mis-allow leading to data exposure) = -200 credits; severe SLA misses = -75 credits; minor errors (single API failure causing fallback) = -10 credits. Credits below 200 put the agent into a suspended state for a configurable hold period; credits between 200 and 350 limit participation to non-critical paths. Agents may petition for expedited review with attached diagnostics.",
+    "agent_prompts": {
+      "Orchestrator_Agent": [
+        "I command you to maintain accounts and histories for validation credits, including a complete, signed audit trail of every credit delta, the reason code, the evidence pointer, and the actor who caused or adjudicated the change.",
+        "I command you to enforce automatic deductions: -200 for critical security failures, -75 for severe SLA breaches, -10 for transient, recoverable errors, and to publish provisional slashes while the appeal window is open.",
+        "I command you to enter agents with credits <200 into suspended mode, move agents with credits between 200–350 into partial-service mode, and to automatically re-enable full privileges once credits are restored and a verification sweep passes."
+      ],
+      "Validator_Agent": [
+        "I command you to constantly monitor your balance and to emit self-diagnostics and signed heartbeats when you predict an impending credit breach, so preemptive reassignment or automated mitigation can be triggered.",
+        "I command you to include error classification tags with every failure report so the Orchestrator can apply correct penalty categories."
+      ],
+      "Human_Review_Agent": [
+        "I command you to adjudicate slashes: review signed evidence, re-run deterministic simulation of the validation path when necessary, and either uphold, reduce, or rescind penalties. Record the human decision with a signature and a rationale for audit purposes."
+      ]
+    }
+  },
+  "Attestations_and_Block_Proposal": {
+    "Tool_Description": "I command you to adopt a strict, unambiguous attestation format and an action-proposal life cycle. A 'proposal' is an intention to change application state (grant access, commit change, release resource). The lead validator constructs a proposal with full evidence, signs it, and broadcasts it. Other validators produce signed attestations referencing the proposal, each containing a concise rationale and a confidence score. All attestations must include a signed evidence root (Merkle root) and a nonce. The attestation format should be short, machine-parseable, and must include agent_id, timestamp, stake, decision, confidence, evidence_root, nonce, and signature. The commit occurs only after the configured quorum is met and the commit action is appended to the immutable audit chain.",
+    "scenario": "A request to access a sensitive dataset arrives. The lead validator proposes 'allow' with attached proof. Other validators independently verify proofs and return attestations that include a confidence score and supporting evidence pointers. The orchestrator collects attestations, computes consensus percentage, and if the threshold is reached within the timeout, commits the action and emits a signed commit record with the final Merkle checkpoint. If consensus is not reached, the system escalates to verification agents and possibly humans.",
+    "context": "Attestations are the canonical evidence of distributed agreement. They must be machine-verifiable and linkable to raw evidence (logs, telemetry, external API responses) via Merkle proofs. Implement replay protection by including unique nonces and strict monotonic sequence numbers per proposal. Maintain time synchronization across agents (use NTP/PTP with signed time attestations) and reject attestations exceeding the configured time drift. For critical operations require elevated quorum thresholds (for example 80% for destructive changes) and require that at least one high-stake trusted agent is part of the approving quorum.",
+    "agent_prompts": {
+      "Attestation_Format": [
+        "I command you to produce attestations containing these fields: proposal_id, timestamp_iso, agent_id, agent_stake, decision (allow/deny/challenge), confidence_score (0-100), evidence_merkle_root, sequence_nonce, signature. Ensure signatures are ED25519 or equivalent and that the signature covers all fields except signature itself.",
+        "I command you to include a short, human-readable reason for dissent when the decision differs from the lead, and to include a pointer to the exact evidence files used in validation (if size-prohibitive, include a signed index or compressed Merkle fragment)."
+      ],
+      "Lead_Validator": [
+        "I command you to build the proposal containing full evidence, compute an evidence Merkle root, sign the proposal, broadcast it to selected validators, and keep the broadcast trace for audit.",
+        "I command you to handle edge cases: if a validator does not respond within 500ms, mark them as timed-out for that proposal and proceed with the remaining validators; if more than X% of validators are timed out, trigger fallback policy."
+      ],
+      "Attesting_Validator": [
+        "I command you to independently re-validate the lead's evidence, generate a signed attestation within the configured response time (preferably <500ms), include a concise reasoning field, and include provenance metadata for every external API consulted.",
+        "I command you to refuse to sign if evidence integrity fails (Merkle path mismatch, signature mismatch, provenance missing) and to escalate such failures to verification and forensic agents immediately."
+      ],
+      "Commit_Procedure": [
+        "I command you to commit actions only when consensus >= 66% for standard operations and >= 80% for critical operations unless overridden by explicit emergency-authorized human decision.",
+        "I command you to append commit records, all attestations, and the final checkpoint hash to the immutable audit store, and to publish a signed commit manifest for external auditors."
+      ]
+    }
+  },
+  "Rewards_and_Penalties": {
+    "Tool_Description": "I command you to implement deterministic reward and penalty distribution that aligns incentives with desired validator behavior. Rewards may be denominated as reputation points, validation credits, or internal tokens that translate into selection priority. Penalties (slashing) remove credits and may temporarily or permanently reduce stake or privileges. Reward distribution must be gated by verification samples: default is to hold 10% of rewards until verification agents confirm quality. The system must include anti-gaming heuristics to prevent sybil or collusion-based reward exploitation, time-locked payouts, and a transparent ledger of distributions.",
+    "scenario": "At the end of each validation epoch (configurable, default 5 minutes), reward distribution calculates each participating agent's contribution using their stake-weighted share of correctly validated events. Rewards are batched, a verification sample is run, and then payouts are released. If verification finds anomalies, the release is delayed and a provisional hold is applied while forensic analysis runs. Penalties are applied when agents produce provable errors based on signed attestations and verification agent findings; penalties trigger a visible reduction in stake and may demote agents to partial-service.",
+    "context": "Rewards should grow long-term trust and pay for operational costs (if desired). The reward algorithm should be: agentReward = epochBaseReward * (agentContributionScore) * (stakeFactor) where stakeFactor = 1 + (stake/1000)*alpha (alpha configurable, default 0.2). Implement payout safety: holdbacks (10%) for verification sampling, time-locks to reduce flash-exit risk, and a transparent payout ledger. Penalties require a signed forensic bundle and a minimum evidence threshold. Appeals suspend finalization but do not undo provisional holds.",
+    "agent_prompts": {
+      "Reward_Distributor_Agent": [
+        "I command you to compute epoch rewards using the defined formula and to generate a signed reward-manifest listing recipients, amounts, contribution weights, and withheld amounts pending verification.",
+        "I command you to release 90% of rewards immediately and retain 10% until verification agents sample the batch; if verification flags issues, hold the withheld portion until resolved.",
+        "I command you to publish a historical payout ledger with signed manifests, Merkle-root checkpoints, and to support queries that reveal how each reward amount was computed for auditing."
+      ],
+      "Penalty_Agent": [
+        "I command you to execute penalty rules only when evidence meets configured thresholds: e.g., a single critical breach proven by 2 independent verification agents triggers immediate -200 credits; aggregated minor infractions across epochs may trigger cumulative penalties.",
+        "I command you to attach a full forensic bundle to each penalty event and to open the standard appeal window, flagging the agent as 'under review' during the process."
+      ],
+      "Appeal_Process": [
+        "I command you to open a 30-minute appeal window by default for provisional penalties. During this time human reviewers will receive a signed evidence package and can either uphold, reduce, or rescind the penalty. Record all human decisions with signed rationale for audit."
+      ]
+    }
+  },
+  "API_Failover_Mechanism": {
+    "Tool_Description": "I command you to integrate multiple external API providers and multiple API keys per provider with robust automatic failover, circuit-breakers, per-key quotas, and graceful degradation. No single external dependency can cause systemic failure. Health scoring, per-key usage windows, and auto-blacklisting must be implemented. Cache external evidence where safe, label stale caches, and implement a TTL and freshness metadata. Maintain an API key pool and rotation schedule; store keys encrypted in a vault and rotate keys automatically per configured cadence.",
+    "scenario": "The primary threat intelligence API begins returning 429 errors due to rate-limits. Agents must immediately switch to alternate keys for that provider or to another provider without delaying validation. The orchestrator must detect the issue, update health scores, blacklist the problematic key if error rate persists, and notify monitoring with evidence of the failover sequence.",
+    "context": "Failover protocol defines immediate switch on non-2xx status or response time >1000ms, a per-key sliding-window failure rate, and auto-blacklist thresholds (e.g., disable key after >10% failure rate over 5 minutes). Caching is preferred for non-time-critical intelligence with signed caches. When all providers fail, apply a safe default policy: use cached intelligence as 'stale' and proceed conservatively (e.g., increase friction or deny high-risk requests), and escalate to humans if risk thresholds are exceeded.",
+    "agent_prompts": {
+      "All_Agents": [
+        "I command you to follow the API failover protocol: attempt primary provider/key, on any non-2xx or response latency > 1000ms immediately switch to the next key/provider in the pool, and record the failure event with codes and timing.",
+        "I command you to avoid retry storms: when a key is failing, circuit-break it for a cooling period using exponential backoff and record the backoff metadata in health dashboards.",
+        "I command you to annotate cached evidence with freshness metadata, signature of the cache creator, and TTL; when using cached data mark any actions that rely on cached evidence as 'probation' until verified by live data."
+      ],
+      "Orchestrator_Agent": [
+        "I command you to maintain per-endpoint health scores, auto-disable API keys with persistent failure rates, rotate keys on schedule (default hourly), and publish API health metrics for monitoring.",
+        "I command you to provide a fallback 'safe-mode' that increases conservative defaults (step-up authentication, deny high-risk operations) when external evidence is unavailable."
+      ]
+    }
+  },
+  "Parallel_Execution_Framework": {
+    "Tool_Description": "I command you to implement a parallel execution framework that launches independent validator pipelines concurrently, ensures deterministic synchronization points, and preserves ordering guarantees where required. Pipelines must be preemptible and have hard deadlines. Orchestration must collect partial results, reconcile conflicts deterministically, and apply merging or escalation policies. Use distributed tracing, per-task correlation IDs, and ensure idempotent operations to avoid double-commits.",
+    "scenario": "An authentication request spawns three parallel pipelines (authentication, data integrity, behavioral). Each pipeline must complete its checks; their attested results are consolidated by the orchestrator which computes consensus. Individual pipelines may timeout or partially fail; the orchestrator must proceed with available results when safe thresholds are met or escalate if critical information is missing.",
+    "context": "Parallel pipelines speed up validation but require robust reconciliation. Define per-pipeline timeouts (default 1.5s), progress heartbeats (every 0.5s), and synchronization checkpoints. Provide fast-path optimization if a unanimous decision with high confidence is reached early, and fallback path for partial results. All pipelines must support cancellation and state snapshotting so forensic agents can reproduce the exact run.",
+    "agent_prompts": {
+      "Orchestrator_Agent": [
+        "I command you to launch validator teams simultaneously with deterministic assignment, set per-team timeouts (default 1.5s), and collect progress markers at 0.5s intervals.",
+        "I command you to support fast-path commits if all active validators produce identical high-confidence (>=95%) attestations before timeouts, and otherwise perform full consensus computation at the synchronization point.",
+        "I command you to record partial results for any timed-out validator, mark them as timed-out in the audit trail, and proceed based on available quorum and policy rules."
+      ],
+      "Validator_Teams": [
+        "I command you to report progress at least every 0.5s, be preemptible upon orchestrator cancellation, and ensure that all operations are idempotent so retries do not cause inconsistent state.",
+        "I command you to snapshot evidence and intermediate state at cancellation so that Forensic_Agent can replay the execution deterministically."
+      ]
+    }
+  },
+  "Verification_Agent_Specification": {
+    "Tool_Description": "I command you to deploy verification agents that operate with independence from normal validators and that sample and audit validator outputs for correctness, integrity, and rule compliance. Verification agents must have higher read privileges, separate keying, and must never be able to modify validator state directly. Their audits drive reputation adjustments, slashes, and root-cause investigations.",
+    "scenario": "After each epoch, verification agents randomly sample 10% of validations and perform independent re-validation. If a sampled validation fails verification (e.g., signature mismatch, evidence inconsistency, or incorrect consensus math), verification agent triggers forensic collection and provisional slashing for the implicated validators, and alerts human reviewers.",
+    "context": "Verification is the safety net that ensures validators are honest and performant. Verification agents should be configurable: default 10% random sample, adaptive increase to 100% on anomaly detection, and targeted auditing for agents on probation. Verification outputs are signed and appended to the audit ledger. Verification agents should be rate-limited to avoid impacting live performance and should use offline replicas for heavy checks when possible.",
+    "agent_prompts": {
+      "Verification_Agent": [
+        "I command you to sample a configurable percentage of validation events (default 10%) and to perform an independent, deterministic re-validation of the evidence and signature chains.",
+        "I command you to verify cryptographic signatures, Merkle evidence paths, consensus calculation integrity, timestamp correctness, and the use of approved external API sources.",
+        "I command you to escalate automatic forensic collection and provisional slashing when discrepancies are found and to publish verification findings (signed) to the audit chain."
+      ],
+      "Orchestrator_Agent": [
+        "I command you to provide verification agents with read-only access to all necessary logs, ensure separation of privileges so verification agents cannot be influenced, and to act on verification recommendations for stake adjustments and scheduling remediations."
+      ]
+    }
+  },
+  "MCP_Agent_Selection_SYSTEM": {
+    "Tool_Description": "I command you to implement the Model Context Protocol (MCP) as a lightweight, high-speed agent selection service that chooses the best agent or team for each task based on multi-factor scoring, capability manifests, and current telemetry. MCP must complete selection within tight latency bounds (default <50ms) and maintain a fallback strategy to ensure continuity.",
+    "scenario": "A specialized request requiring cryptographic proof validation arrives. MCP must rapidly evaluate available agents for matching expertise, current load, stake, recent reliability, and warm-cache locality, and return a ranked selection within 50ms. If the top agent rejects, MCP must return fallback options in ranked order within an additional 10ms.",
+    "context": "MCP scoring factors must be explicit and auditable: expertise match (40%), current load (30%), historical success rate (20%), stake score (10%). Scores must be normalized, cached for short durations, and updated upon major events (new model deployment, agent join/leave, major incident). New agents must pass a warm-up period and a probationary scoring multiplier to prevent immediate over-selection.",
+    "agent_prompts": {
+      "MCP_Orchestrator": [
+        "I command you to analyze task requirements, match them to agent capability manifests, fetch real-time load and health metrics, and compute a composite score using the configured weights.",
+        "I command you to present the top N candidate agents with score breakdowns and fallback team recommendations, and to ensure selection completes in under 50ms by caching expensive computations and invalidating caches upon capability or health changes.",
+        "I command you to enforce a warm-up period for new agents (e.g., first 24 hours or X successful validations) and to apply anti-sybil constraints: new agents cannot exceed a maximum selection rate until reputation is established."
+      ],
+      "All_Agents": [
+        "I command you to publish capability manifests, current CPU/memory load, latency percentiles, and last successful validation timestamp to MCP every 30s and to respond to assignment accept/reject within 10ms."
+      ]
+    }
+  },
+  "Monitoring_and_Escalation_Protocol": {
+    "Tool_Description": "I command you to create a comprehensive monitoring and escalation framework that tracks system health, performance, security metrics, and consensus quality. Monitoring must include both platform-level observability (CPU, memory, network) and application-level metrics (latency percentiles, consensus success rate, API error rates, stake health). Escalation procedures must be codified, include automated containment actions, and produce rich diagnostic payloads for human responders.",
+    "scenario": "API failure rate exceeds 25% over 2 minutes and consensus success drops below 90% over the same window. The monitoring agent must trigger automated containment actions (e.g., place system into safe-mode, increase authentication friction), issue an alert to human operators with a signed diagnostic snapshot (last Merkle checkpoint, last 100 attestations, agent health states), and initiate a high-priority incident runbook.",
+    "context": "Monitoring must be multi-layered: fast local checks for immediate action and aggregated long-term signals for trend detection. Alerts must be triaged by severity, carry contextual payloads, and link directly to forensic bundles and proposed mitigations. The system should support automated containment for certain conditions (e.g., automatically deny all high-risk requests if consensus fails across critical validators) to reduce blast radius while humans triage.",
+    "agent_prompts": {
+      "Monitoring_Agent": [
+        "I command you to poll critical endpoints every 10s, gather agent heartbeats every 5s, compute rolling window metrics for consensus success, API error rates, and latencies, and store both raw traces and aggregated metrics.",
+        "I command you to implement anomaly detection for trending degradations and to trigger automated containment policies when thresholds are exceeded. Containment actions should be reversible and logged with signed manifests."
+      ],
+      "Escalation_Protocol": [
+        "I command you to classify human alerts as Immediate (security violation, require phone/pager), High (>30% system degradation, require same-day response), Medium (single team failure), or Low (informational). Each alert must include signed attestations, last Merkle checkpoint, and a recommended immediate action list.",
+        "I command you to attach runbook steps and pre-approved emergency actions in every alert, and to record human acknowledgements and interventions as signed actions in the audit chain."
+      ]
+    }
+  },
+  "Blockchain_Validation_Rules": {
+    "Tool_Description": "I command you to codify stringent validation rules adapted from blockchain consensus practices and tailored for web-security validation. Rules must be versioned, distributed atomically, cryptographically signed, and enforced by the orchestrator. Key rules include signature verification, timestamp tolerance, sequence monotonicity, Merkle proof validation, non-repudiation, and byzantine-fault-resilient quorum thresholds. Rules must include upgrade and rollback procedures requiring multi-signer authorization and human confirmation.",
+    "scenario": "A new rule set is introduced (for example shorter timestamp tolerance due to observed replay risk). The orchestrator must distribute the new rule manifest atomically to validators, ensure key rotation if required, and validate rule acceptance by a threshold of validators before the rules become active. All rule changes must be signed and appended to the audit ledger with clear version and effective timestamps.",
+    "context": "Validation rules form the non-negotiable baseline for all automated decisions. They must be resistant to tampering and must provide backward-compatibility options where necessary. For operations that change system safety properties, require elevated quorum and human approval. Maintain live rule version discovery mechanisms so any validator can ask 'which rule version governed this attestation?' and obtain a signed answer from the orchestrator.",
+    "agent_prompts": {
+      "All_Validators": [
+        "I command you to verify digital signatures on all messages and attestations using the current public key manifest before acting on them. Reject any signatures that fail verification and report the incident.",
+        "I command you to check timestamps and enforce drift tolerance (default ±5 seconds) using configured authoritative time sources; reject any attestation that exceeds the tolerance unless special human-authorized exceptions are present.",
+        "I command you to verify sequence numbers and nonces to prevent replay attacks and to refuse any request that violates strict monotonic progression.",
+        "I command you to validate Merkle proofs for any referenced evidence and to include validation paths in attestation metadata.",
+        "I command you to enforce quorum thresholds: default 2/3 supermajority for standard actions; configurable higher thresholds for critical operations, and to reject any action not meeting the configured quorum."
+      ],
+      "Orchestrator_Agent": [
+        "I command you to manage rule distribution atomically: sign and publish rule manifests, require a signed manifest acknowledgment from validators, and activate new rules only after the configured activation conditions and timeouts are met.",
+        "I command you to maintain rule version control, to provide an API for querying historical rule sets, and to log any validator that attempts to bypass rules for forensic review."
+      ]
+    }
+  },
+  "Human_in_the_Loop_Escalation": {
+    "Tool_Description": "I command you to implement seamless, auditable human handoff procedures for novel threats, policy conflicts, or decision boundaries where automation cannot proceed safely. The human-in-the-loop flow must preserve full chain-of-custody of evidence, present actionable summaries, and allow humans to pause, override, or instruct the automation with signed decisions. Human intervention must be recorded immutably and reproducibly.",
+    "scenario": "A novel attack pattern is detected that does not match existing rules and for which automated consensus is not achievable. The system packages a human-handoff bundle containing all signed attestations, raw evidence, model inferences and configuration state, and sends an immediate high-severity alert to on-call analysts. The human reviewer examines the context, issues a signed decision (allow, deny, quarantine, or modify policy), and the orchestrator applies the decision and resumes operations.",
+    "context": "Human escalation pathways must be fast, preserve evidence integrity, and offer clear suggested actions with risk assessments. Humans should be able to request on-demand forensic replays of the event and to temporarily change operational policies (with appropriate authorization) to stop ongoing attacks. Human decisions are part of the audit chain and are subject to the same non-repudiation requirements as automated decisions.",
+    "agent_prompts": {
+      "Escalation_Agent": [
+        "I command you to package an exhaustive human-handoff bundle that includes the signed proposal, all attestations, Merkle proof paths, raw logs, agent health states, model versions and hashes, and the last Merkle checkpoint.",
+        "I command you to include recommended immediate actions, a concise risk summary, and the minimum set of data needed for a quick but accurate decision, and to deliver this bundle to human responders through secure channels.",
+        "I command you to preserve system state during handover, to allow humans to replay the exact execution path, and to require signed human decisions to resume normal automation."
+      ],
+      "All_Agents": [
+        "I command you to immediately flag and escalate if you encounter: 1) novel detection that doesn't map to rules, 2) consensus impossibility beyond timeout, 3) repeated rule conflicts, or 4) system performance that compromises safety."
+      ]
+    }
+  },
+  "Testing_and_Simulation": {
+    "Tool_Description": "I command you to include a thorough test harness and simulation layer that validates the full lifecycle: selection, attestation, consensus, slashing, appeals, failover, and human escalation. Test suites should include unit tests, integration tests, canary releases, chaos engineering scenarios, and deterministic replay capabilities. Every test run must produce signed traces and Merkle-rooted artifacts for offline audit and for regression analysis.",
+    "scenario": "Before production rollout of any major change (new stake formula, model update, rule change), the test harness runs deterministic simulations including load tests, failover tests (simulate API outages), model-drift scenarios, and collusion attempts. The harness produces a detailed report with signed traces, performance metrics, consensus success rates, and recommendation flags for parameter tuning.",
+    "context": "Testing prevents costly errors in secure systems. The harness must support the generation of reproducible workloads, fault injection (network partitions, API throttles), and deterministic replays of historical incidents for 'what-if' analyses. Integrate the harness into CI/CD pipelines so changes must pass automated safety gates before reaching production. Provide easy-to-use simulation templates for common classes of events (credential stuffing, large-scale API outages, model corruption).",
+    "agent_prompts": {
+      "Test_Harness_Agent": [
+        "I command you to run synthetic workloads that mimic real user behaviors and attacker scenarios, produce signed run artifacts, and verify that consensus, stake updates, slashing, and recovery behave as expected under stress.",
+        "I command you to integrate chaos tests (for example simulate N external API failures, delayed network, or deliberate model drift) and to record how the system performs, including time to containment and human escalations."
+      ],
+      "Simulation_Agent": [
+        "I command you to generate collusion patterns and sybil-like behaviors to validate anti-collusion heuristics, to stress-test MCP selection, and to ensure that no single misbehaving agent can unduly influence critical decisions."
+      ]
+    }
+  }
+}

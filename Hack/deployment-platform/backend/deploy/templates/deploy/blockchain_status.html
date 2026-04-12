@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Status - Real-time Block Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .title {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.2rem;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .status-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid #667eea;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .status-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .recent-block-entry {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #e5e7eb;
+            gap: 12px;
+        }
+
+        .recent-block-entry-active {
+            border-left-color: #10b981;
+        }
+
+        .recent-block-entry-inactive {
+            border-left-color: #6b7280;
+        }
+
+        .recent-block-label {
+            font-weight: bold;
+        }
+
+        .recent-block-label-active {
+            color: #10b981;
+        }
+
+        .recent-block-label-inactive {
+            color: #374151;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            margin-right: 15px;
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .active-block {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            color: white;
+            border-left-color: #00f2fe;
+        }
+
+        .active-block .stat-value,
+        .active-block .card-title {
+            color: white;
+        }
+
+        .active-block .stat-label {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .block-hash {
+            font-family: 'Monaco', 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            word-break: break-all;
+        }
+
+        .active-block .block-hash {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px auto;
+            display: block;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .auto-refresh {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+
+        .rotation-info {
+            background: #f8f9ff;
+            border: 1px solid #e0e7ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .rotation-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #4338ca;
+            margin-bottom: 10px;
+        }
+
+        .next-rotation {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+            margin: 10px 0;
+        }
+
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 2rem;
+            }
+            
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🔗 Blockchain Monitor</h1>
+            <p class="subtitle">Real-time Block Rotation System</p>
+        </div>
+
+        {% if error %}
+            <div class="error">
+                <h3>❌ Error</h3>
+                <p>{{ error }}</p>
+            </div>
+        {% else %}
+            <div class="status-grid">
+                <div class="status-card">
+                    <div class="card-header">
+                        <div class="card-icon">🔢</div>
+                        <h3 class="card-title">Total Blocks</h3>
+                    </div>
+                    <div class="stat-value">{{ stats.total_blocks|default:0 }}</div>
+                    <div class="stat-label">Created</div>
+                </div>
+
+                <div class="status-card">
+                    <div class="card-header">
+                        <div class="card-icon">✅</div>
+                        <h3 class="card-title">Valid Blocks</h3>
+                    </div>
+                    <div class="stat-value">{{ stats.valid_blocks|default:0 }}</div>
+                    <div class="stat-label">Verified</div>
+                </div>
+
+                <div class="status-card">
+                    <div class="card-header">
+                        <div class="card-icon">⏰</div>
+                        <h3 class="card-title">Timed Blocks</h3>
+                    </div>
+                    <div class="stat-value">{{ stats.timed_blocks|default:0 }}</div>
+                    <div class="stat-label">Auto-generated</div>
+                </div>
+
+                <div class="status-card">
+                    <div class="card-header">
+                        <div class="card-icon">🚀</div>
+                        <h3 class="card-title">Deployment Blocks</h3>
+                    </div>
+                    <div class="stat-value">{{ stats.deployment_blocks|default:0 }}</div>
+                    <div class="stat-label">From Repositories</div>
+                </div>
+            </div>
+
+            {% if active_block %}
+                <div class="status-card active-block" style="border: 3px solid #00f2fe; box-shadow: 0 0 20px rgba(0, 242, 254, 0.3);">
+                    <div class="card-header">
+                        <div class="card-icon">🔴</div>
+                        <h3 class="card-title">🎯 CURRENTLY ACTIVE BLOCK #{{ active_block.block_number }}</h3>
+                    </div>
+                    <div class="stat-value" style="font-size: 2.8rem; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                        {{ stats.active_block_id }}
+                    </div>
+                    <div class="stat-label" style="font-size: 1rem; font-weight: bold;">⚡ CURRENT BLOCK ID ⚡</div>
+                    <div class="block-hash">
+                        <strong>Type:</strong> {{ active_block.block_type|title }}<br>
+                        <strong>Created:</strong> {{ active_block.created_at|date:"M d, Y H:i:s" }}<br>
+                        <strong>Repository:</strong> {{ active_block.repo_url }}<br>
+                        <strong>Full Hash:</strong> <span style="font-family: monospace; font-size: 0.9rem;">{{ active_block.block_hash }}</span>
+                    </div>
+                    <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.2); border-radius: 8px; text-align: center;">
+                        <strong>🔄 This ID changes every 30 seconds!</strong><br>
+                        <span style="font-size: 0.9rem;">Watch for real-time notifications when it updates</span>
+                    </div>
+                </div>
+            {% else %}
+                <div class="status-card">
+                    <div class="card-header">
+                        <div class="card-icon">⚪</div>
+                        <h3 class="card-title">No Active Block</h3>
+                    </div>
+                    <div class="stat-label">Blockchain is initializing...</div>
+                </div>
+            {% endif %}
+
+            <div class="rotation-info">
+                <h3 class="rotation-title">🔄 Automatic Block Rotation</h3>
+                <p>Blocks are automatically rotated every <strong>10 minutes</strong> to maintain blockchain continuity.</p>
+                {% if stats.last_rotation %}
+                    <div class="next-rotation">
+                        Last rotation: {{ stats.last_rotation|date:"M d, Y H:i:s" }}
+                    </div>
+                {% endif %}
+                <p style="margin-top: 15px; color: #6b7280;">
+                    🔗 Each new block includes cryptographic links to previous blocks<br>
+                    🔐 Evidence is encrypted and stored securely<br>
+                    ⚡ Real-time validation ensures blockchain integrity
+                </p>
+            </div>
+
+            {% if recent_blocks %}
+            <div style="margin-top: 30px; background: #f8fafc; border-radius: 15px; padding: 25px; border: 1px solid #e2e8f0;">
+                <h3 style="color: #1e40af; margin-bottom: 20px; font-size: 1.3rem;">
+                    📊 Recent Block Changes
+                </h3>
+                <div style="display: grid; gap: 10px;">
+                    {% for block in recent_blocks %}
+                    <div class="recent-block-entry {% if block.is_active %}recent-block-entry-active{% else %}recent-block-entry-inactive{% endif %}">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="recent-block-label {% if block.is_active %}recent-block-label-active{% else %}recent-block-label-inactive{% endif %}">
+                                    {% if block.is_active %}🔴 ACTIVE{% else %}⚪{% endif %} Block #{{ block.block_number }}
+                                </span>
+                                <span style="font-family: monospace; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 0.9rem;">
+                                    {{ block.block_hash|slice:":10" }}
+                                </span>
+                                <span style="color: #6b7280; font-size: 0.85rem;">
+                                    {{ block.block_type|title }}
+                                </span>
+                            </div>
+                            <div style="color: #6b7280; font-size: 0.8rem; margin-top: 4px;">
+                                {{ block.created_at|date:"M d, H:i:s" }}
+                            </div>
+                        </div>
+                        {% if block.is_active %}
+                        <div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">
+                            CURRENT
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <p style="text-align: center; margin-top: 15px; color: #6b7280; font-size: 0.9rem;">
+                    🕒 Watch the active block change in real-time every 10 minutes!
+                </p>
+            </div>
+            {% endif %}
+
+            <button class="refresh-btn" onclick="location.reload()">
+                🔄 Refresh Status
+            </button>
+            
+            <div class="auto-refresh">
+                <p>🔄 Real-time monitoring every 15 seconds</p>
+                <p class="last-refresh" style="font-size: 0.8rem; color: #9ca3af; margin-top: 5px;">
+                    Last checked: --:--:--
+                </p>
+                <div style="margin-top: 15px; padding: 15px; background: #f0f9ff; border-radius: 8px; border: 1px solid #0ea5e9;">
+                    <h4 style="color: #0ea5e9; margin-bottom: 8px;">🎯 Block Change Detection</h4>
+                    <p style="font-size: 0.85rem; color: #0369a1; margin: 0;">
+                        🔍 Monitoring for Block ID changes<br>
+                        🆕 Instant notifications when blocks rotate<br>
+                        ⏰ Next rotation in ~{{ next_rotation_time|default:"calculating..." }}
+                    </p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        let lastBlockId = '{{ stats.active_block_id|default:"none" }}';
+        let lastBlockNumber = Number('{{ stats.active_block_number|default:"0" }}') || 0;
+        let refreshCount = 0;
+
+        // Auto-refresh every 15 seconds for more real-time updates
+        function refreshStatus() {
+            refreshCount++;
+            console.log(`🔄 Refresh #${refreshCount} - Checking for block changes...`);
+            
+            fetch('/blockchain/', {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const currentBlockId = data.active_block?.id || 'none';
+                const currentBlockNumber = data.active_block?.number || 0;
+                
+                console.log(`Current: Block #${currentBlockNumber} (${currentBlockId}) | Previous: Block #${lastBlockNumber} (${lastBlockId})`);
+                
+                // Check if block ID or number changed
+                if (currentBlockId !== lastBlockId || currentBlockNumber !== lastBlockNumber) {
+                    console.log('🆕 BLOCK CHANGE DETECTED! Refreshing page...');
+                    
+                    // Show notification
+                    showBlockChangeNotification(lastBlockId, currentBlockId, lastBlockNumber, currentBlockNumber);
+                    
+                    // Update stored values
+                    lastBlockId = currentBlockId;
+                    lastBlockNumber = currentBlockNumber;
+                    
+                    // Refresh page after short delay
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    console.log('⏳ No block change detected');
+                    updateLastRefreshTime();
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error checking blockchain status:', error);
+            });
+        }
+
+        function showBlockChangeNotification(oldId, newId, oldNumber, newNumber) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #4facfe, #00f2fe);
+                color: white;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                z-index: 10000;
+                font-family: inherit;
+                font-weight: bold;
+                max-width: 400px;
+                animation: slideIn 0.5s ease;
+            `;
+            
+            notification.innerHTML = `
+                <div style="font-size: 1.2rem; margin-bottom: 10px;">🆕 NEW BLOCK CREATED!</div>
+                <div style="font-size: 0.9rem; opacity: 0.9;">
+                    Block #${oldNumber} → Block #${newNumber}<br>
+                    ID: ${oldId} → ${newId}
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Remove notification after 5 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 5000);
+            
+            // Add animation keyframe
+            if (!document.querySelector('#slideInKeyframes')) {
+                const style = document.createElement('style');
+                style.id = 'slideInKeyframes';
+                style.textContent = `
+                    @keyframes slideIn {
+                        from { transform: translateX(100%); opacity: 0; }
+                        to { transform: translateX(0); opacity: 1; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        }
+
+        function updateLastRefreshTime() {
+            const timeElement = document.querySelector('.last-refresh');
+            if (timeElement) {
+                const now = new Date();
+                timeElement.textContent = `Last checked: ${now.toLocaleTimeString()}`;
+            }
+        }
+
+        // Add live timestamp
+        function updateTimestamp() {
+            const now = new Date().toLocaleString();
+            document.title = `🔗 Blockchain Monitor - ${now}`;
+        }
+
+        // Start refresh cycle
+        setInterval(refreshStatus, 15000); // Check every 15 seconds
+        setInterval(updateTimestamp, 1000);
+        updateTimestamp();
+        
+        // Initial status check
+        setTimeout(refreshStatus, 2000);
+        
+        console.log('🚀 Real-time blockchain monitor started!');
+        console.log('📡 Checking for block changes every 15 seconds');
+        console.log(`🔍 Monitoring Block #${lastBlockNumber} (${lastBlockId})`);
+    </script>
+</body>
+</html>

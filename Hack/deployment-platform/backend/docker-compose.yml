@@ -1,0 +1,7 @@
+version: "3.8"
+services:
+  sample_app:
+    build: ./sample_app
+    image: sample_app:latest
+    ports:
+      - "9000:9000"
