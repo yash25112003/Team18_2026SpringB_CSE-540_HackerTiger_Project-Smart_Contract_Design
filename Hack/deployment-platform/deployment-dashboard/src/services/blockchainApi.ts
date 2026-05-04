@@ -18,6 +18,15 @@ export interface ActiveBlock {
 export interface BlockchainStatusResponse {
   success: boolean;
   blockchain_stats: BlockchainStats;
+  chain_config?: {
+    network: string;
+    contract_name: string;
+    contract_address: string;
+    deployer: string;
+    explorer_url: string;
+    rpc_url_configured: boolean;
+    deployment_metadata_found: boolean;
+  };
   active_block: ActiveBlock | null;
   error?: string;
 }
@@ -59,7 +68,7 @@ export interface DeploymentHistoryResponse {
 
 class BlockchainApiService {
   // Point the frontend to the Django backend API
-  private baseUrl = 'http://127.0.0.1:8000/api';
+  private baseUrl = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000/api';
   private isMonitoringActive = false;
   private activeMonitoringId: string | null = null;
 

@@ -6,6 +6,7 @@ import os
 import asyncio
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+from pathlib import Path
 from dotenv import load_dotenv
 
 
@@ -72,12 +73,14 @@ def load_config(env_file: Optional[str] = None) -> Config:
     if env_file and os.path.exists(env_file):
         load_dotenv(env_file)
     else:
-        load_dotenv()
-    
+        load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+
     # Parse Gemini API keys
     api_keys_str = os.getenv("GEMINI_API_KEYS", "")
+    if not api_keys_str and os.getenv("GEMINI_API_KEY"):
+        api_keys_str = os.getenv("GEMINI_API_KEY", "")
     if not api_keys_str:
-        raise ValueError("GEMINI_API_KEYS environment variable is required")
+        raise ValueError("GEMINI_API_KEYS or GEMINI_API_KEY environment variable is required")
     
     api_keys = [key.strip() for key in api_keys_str.split(",") if key.strip()]
     

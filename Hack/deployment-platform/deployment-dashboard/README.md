@@ -27,7 +27,13 @@ npm install
 npm run dev
 ```
 
-The dev server defaults to `http://127.0.0.1:5173`. The app expects the Django backend to be running at `http://127.0.0.1:8000`; update `blockchainApi.baseUrl` if you expose it elsewhere.
+The dev server defaults to `http://127.0.0.1:5173`. Configure `.env` from `.env.example` and set:
+
+- `VITE_API_BASE` for the Django API base URL
+- `VITE_SEPOLIA_RPC_URL` for read-only Sepolia access
+- `VITE_CONTRACT_ADDRESS` for the deployed contract address
+
+The app now reads the API base URL from env instead of hardcoding it in `blockchainApi.ts`.
 
 ## How It Uses Backend Data
 

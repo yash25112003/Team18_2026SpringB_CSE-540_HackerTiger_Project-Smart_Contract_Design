@@ -19,10 +19,10 @@ The Django project exposes `/api/*` endpoints, renders the legacy HTML form at `
 
 ### Main Components
 - `manage.py` – Entry point for all Django management commands (migrations, admin user creation, maintenance jobs).
-- `deployer/settings.py` – Core configuration (SQLite DB, corsheaders, installed apps, env-driven Gemini key support) plus CORS and logging settings used by both React and HTML clients.
+- `deployer/settings.py` – Core configuration (SQLite DB, corsheaders, installed apps, env-driven Gemini key support, Sepolia RPC + contract address settings) plus CORS and logging settings used by both React and HTML clients.
 - `deploy/models.py` – Defines the blockchain `Block` plus any auxiliary tables for deployment logs.
 - `deploy/services.py` – Pipeline brain: validates GitHub repos, fetches diffs/README snippets, calls the agents, provisions local HTTP servers, tracks process metadata, and cleans up expired deployments.
-- `deploy/api_views.py` & `api_urls.py` – REST surface consumed by the frontend (`/api/status/`, `/api/validate/`, `/api/deploy/`, `/api/history/`).
+- `deploy/api_views.py` & `api_urls.py` – REST surface consumed by the frontend (`/api/status/`, `/api/validate/`, `/api/deploy/`, `/api/history/`). `/api/status/` now includes `chain_config` so the UI can confirm which Sepolia contract address is active.
 - `deploy/templates/deploy/*.html` – Legacy form UI plus blockchain dashboard rendered directly by Django.
 - `deploy/management/commands/*.py` – Operational utilities (e.g., `clear_blocks.py`, `rotate_blocks.py`) for resetting or maintaining the ledger.
 - `deployments/` – Re-created at runtime; stores generated site assets plus `.deployment_info` metadata. The repo keeps the folder (via `.gitkeep`) but not the generated deploy-* directories.
@@ -54,7 +54,7 @@ Provides the authenticated UX for repo submission, blockchain monitoring, and de
 
 ## How Backend and Frontend Interact
 
-- **API Contract**: JSON request/response payloads defined in `src/services/blockchainApi.ts` mirror `backend/deploy/api_views.py` serializers.
+- **API Contract**: JSON request/response payloads defined in `src/services/blockchainApi.ts` mirror `backend/deploy/api_views.py` serializers, including the `chain_config` object returned by `/api/status/`.
 - **Ports**: Backend typically runs on `http://127.0.0.1:8000`, while Vite runs on `http://127.0.0.1:5173` (adjust via `.env` / config). CORS is enabled in Django settings for local development.
 - **Agents Dependency**: When Django handles `/api/deploy/`, it loads the sibling `agents/` package (via relative `Path` logic inside `deploy/services.py`). Make sure the Python environment can import that folder or run both projects inside the same repo checkout.
 

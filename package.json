@@ -2,11 +2,11 @@
   "name": "eng-blockchain-26-hacktiger",
   "version": "1.0.0",
   "description": "HackerTiger smart contract design",
-  "type": "module",
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "deploy": "hardhat run scripts/deploy.js"
+    "deploy": "hardhat run scripts/deploy.js",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia"
   },
   "repository": {
     "type": "git",
@@ -14,7 +14,8 @@
   },
   "license": "ISC",
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^7.0.0",
-    "hardhat": "^3.2.0"
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "dotenv": "^16.6.1",
+    "hardhat": "^2.22.17"
   }
 }

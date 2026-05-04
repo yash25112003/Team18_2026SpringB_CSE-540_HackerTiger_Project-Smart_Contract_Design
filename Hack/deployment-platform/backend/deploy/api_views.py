@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import sys
 from .services import create_block_and_process, get_blockchain_stats, get_current_active_block, validate_github_repo
+from .chain_config import get_chain_config
 from .models import Block
 
 @csrf_exempt
@@ -28,6 +29,7 @@ def api_blockchain_status(request):
         return JsonResponse({
             'success': True,
             'blockchain_stats': stats,
+            'chain_config': get_chain_config(),
             'active_block': {
                 'id': active_block.block_hash[:10] if active_block else None,
                 'full_hash': active_block.block_hash if active_block else None,
@@ -41,6 +43,7 @@ def api_blockchain_status(request):
     except Exception as e:
         return JsonResponse({
             'success': False,
+            'chain_config': get_chain_config(),
             'error': str(e)
         }, status=500)
 

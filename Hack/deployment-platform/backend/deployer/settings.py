@@ -2,13 +2,24 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
-load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key")
 DEBUG = True
 ALLOWED_HOSTS = ["*"]
+
+GEMINI_API_KEYS = [
+    key.strip()
+    for key in os.environ.get("GEMINI_API_KEYS", "").split(",")
+    if key.strip()
+]
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or (
+    GEMINI_API_KEYS[0] if GEMINI_API_KEYS else ""
+)
+SEPOLIA_RPC_URL = os.environ.get("SEPOLIA_RPC_URL", "")
+DEPLOYMENT_VALIDATOR_ADDRESS = os.environ.get("DEPLOYMENT_VALIDATOR_ADDRESS", "")
 
 INSTALLED_APPS = [
     "django.contrib.admin",

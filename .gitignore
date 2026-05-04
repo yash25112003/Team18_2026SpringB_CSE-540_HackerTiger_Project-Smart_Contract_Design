@@ -208,6 +208,7 @@ __marimo__/
 node_modules/
 artifacts/
 cache/
+deployed-address.json
 
 # Large local archives / nested repo metadata (do not push to GitHub)
 Hack.zip

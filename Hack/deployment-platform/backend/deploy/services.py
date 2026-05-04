@@ -12,6 +12,12 @@ from django.db import transaction
 try:
     import google.generativeai as genai
     GEN_API_KEY = os.environ.get("GEMINI_API_KEY")
+    if not GEN_API_KEY:
+        gemini_api_keys = os.environ.get("GEMINI_API_KEYS", "")
+        GEN_API_KEY = next(
+            (key.strip() for key in gemini_api_keys.split(",") if key.strip()),
+            "",
+        )
     GEMINI_AVAILABLE = bool(GEN_API_KEY)
     
     if GEMINI_AVAILABLE:
@@ -443,7 +449,8 @@ def create_block_and_process(repo_url: str, commit_hash: str = None):
             # Post-modification chain validation (ensure continuity)
             _post_modification_validate_chain()
             
-            # Schedule periodic timed block creation in background
+            # Keep the periodic timed block worker alive after the first
+            # successful deployment as well; the app startup path also starts it.
             _schedule_timed_block_rotation()
             
             print(f"✅ AI validation passed, deployment confirmed")
@@ -510,8 +517,9 @@ def _ensure_monitors_started():
 
 def _schedule_timed_block_rotation():
     """
-    Start a background daemon thread that creates timed blocks every 10 minutes.
-    Called once after first successful deployment to ensure automatic rotation.
+    Start a background daemon thread that checks rotation every 30 seconds and
+    creates timed blocks whenever the active timed block is older than 30 seconds.
+    This is safe to call repeatedly; only the first call starts the worker.
     """
     global _rotation_thread_started
     if _rotation_thread_started:
@@ -1871,7 +1879,7 @@ def rollback_last_valid():
 
 def create_timed_block():
     """
-    Create a new timed block every 10 minutes to maintain blockchain continuity
+    Create a new timed block every 30 seconds to maintain blockchain continuity.
     """
     import datetime
     from django.utils import timezone
@@ -1949,7 +1957,7 @@ def get_blockchain_stats():
 
 def check_and_rotate_block():
     """
-    Check if 10 minutes have passed since last block and rotate if needed
+    Check if 30 seconds have passed since the last timed block and rotate if needed.
     """
     from django.utils import timezone
     import datetime

@@ -55,8 +55,20 @@ Implements:
 - npm
 - Hardhat
 - Solidity `^0.8.20`
+- Sepolia RPC endpoint and funded Sepolia wallet for live Ethereum deployment
 
 ## Setup Instructions
 ```bash
 npm install
 npx hardhat compile
+npm test
+```
+
+## Sepolia Deployment
+
+The contract package is configured for Sepolia through root environment variables:
+
+- `SEPOLIA_RPC_URL`
+- `ETH_PRIVATE_KEY`
+
+Use the full deployment runbook in [SEPOLIA_DEPLOYMENT_RUNBOOK.md](/Users/ashishrajshekhar/Desktop/Team18_2026SpringB_CSE-540_HackerTiger_Project-Smart_Contract_Design/SEPOLIA_DEPLOYMENT_RUNBOOK.md). The deploy script writes `deployed-address.json`, which the Django backend can read as a fallback source of truth for the live contract address.
