@@ -1,0 +1,14 @@
+# Django and Web Framework
+Django
+django-cors-headers
+requests
+
+# AI Integration
+google-generativeai
+
+# Development and Demo
+flask
+
+# Additional utilities
+python-dotenv
+cryptography
